@@ -1,0 +1,17 @@
+
+.App {
+  text-align: left;
+}
+
+/* Custom styles */
+.container {
+  max-width: 1200px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
