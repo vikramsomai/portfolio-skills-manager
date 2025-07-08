@@ -31,6 +31,13 @@ const Admin: React.FC = () => {
         category: "Frontend" as const,
     })
 
+    const [editingSkillId, setEditingSkillId] = useState<string | null>(null)
+    const [editSkill, setEditSkill] = useState({
+        name: "",
+        level: "Beginner" as const,
+        category: "Frontend" as const,
+    })
+
     useEffect(() => {
         fetchData()
     }, [])
@@ -38,13 +45,14 @@ const Admin: React.FC = () => {
     const fetchData = async () => {
         try {
             setLoading(true)
-            // Try to fetch real data, fallback to demo data
-            const [skillsResponse, contactsResponse] = await Promise.allSettled([skillsApi.getAll(), contactApi.getAll()])
+            const [skillsResponse, contactsResponse] = await Promise.allSettled([
+                skillsApi.getAll(),
+                contactApi.getAll(),
+            ])
 
             if (skillsResponse.status === "fulfilled") {
                 setSkills(skillsResponse.value.data.data)
             } else {
-                // Fallback data
                 setSkills([
                     { _id: "1", name: "React", level: "Advanced", category: "Frontend" },
                     { _id: "2", name: "Node.js", level: "Intermediate", category: "Backend" },
@@ -54,13 +62,12 @@ const Admin: React.FC = () => {
             if (contactsResponse.status === "fulfilled") {
                 setContacts(contactsResponse.value.data.data)
             } else {
-                // Fallback data
                 setContacts([
                     {
                         _id: "1",
                         name: "John Doe",
                         email: "john@example.com",
-                        message: "Great portfolio! I would like to discuss a project.",
+                        message: "Great portfolio!",
                         createdAt: new Date(),
                     },
                 ])
@@ -80,11 +87,7 @@ const Admin: React.FC = () => {
             setNewSkill({ name: "", level: "Beginner", category: "Frontend" })
         } catch (error) {
             console.error("Error adding skill:", error)
-            // For demo purposes, add locally
-            const newSkillWithId = {
-                _id: Date.now().toString(),
-                ...newSkill,
-            }
+            const newSkillWithId = { _id: Date.now().toString(), ...newSkill }
             setSkills([...skills, newSkillWithId])
             setNewSkill({ name: "", level: "Beginner", category: "Frontend" })
         }
@@ -96,8 +99,33 @@ const Admin: React.FC = () => {
             setSkills(skills.filter((skill) => skill._id !== id))
         } catch (error) {
             console.error("Error deleting skill:", error)
-            // For demo purposes, delete locally
             setSkills(skills.filter((skill) => skill._id !== id))
+        }
+    }
+
+    const handleEditClick = (skill: Skill) => {
+        setEditingSkillId(skill._id!)
+        setEditSkill({
+            name: skill.name || "",
+            level: skill.level || "Beginner",
+            category: skill.category || "Frontend",
+        })
+    }
+
+    const handleCancelEdit = () => {
+        setEditingSkillId(null)
+    }
+
+    const handleUpdateSkill = async (e: React.FormEvent) => {
+        e.preventDefault()
+        try {
+            const updatedSkill = await skillsApi.update(editingSkillId!, editSkill)
+            setSkills(skills.map((s) => (s._id === editingSkillId ? updatedSkill.data : s)))
+        } catch (error) {
+            console.error("Error updating skill:", error)
+            setSkills(skills.map((s) => (s._id === editingSkillId ? { ...s, ...editSkill } : s)))
+        } finally {
+            setEditingSkillId(null)
         }
     }
 
@@ -110,26 +138,23 @@ const Admin: React.FC = () => {
     }
 
     return (
-        <div>
+        <div className="px-4 md:px-10">
             <div className="text-center mb-8">
                 <h1 className="text-4xl font-bold text-gray-900 mb-4">Admin Panel</h1>
                 <p className="text-lg text-gray-600">Manage your skills and view contact submissions</p>
             </div>
 
-            {/* Tab Navigation */}
             <div className="flex justify-center mb-8">
                 <div className="bg-gray-100 p-1 rounded-lg">
                     <button
                         onClick={() => setActiveTab("skills")}
-                        className={`px-6 py-2 rounded-md transition-colors ${activeTab === "skills" ? "bg-white text-blue-600 shadow" : "text-gray-600 hover:text-gray-900"
-                            }`}
+                        className={`px-6 py-2 rounded-md ${activeTab === "skills" ? "bg-white text-blue-600 shadow" : "text-gray-600 hover:text-gray-900"}`}
                     >
                         Skills Management
                     </button>
                     <button
                         onClick={() => setActiveTab("contacts")}
-                        className={`px-6 py-2 rounded-md transition-colors ${activeTab === "contacts" ? "bg-white text-blue-600 shadow" : "text-gray-600 hover:text-gray-900"
-                            }`}
+                        className={`px-6 py-2 rounded-md ${activeTab === "contacts" ? "bg-white text-blue-600 shadow" : "text-gray-600 hover:text-gray-900"}`}
                     >
                         Contact Messages
                     </button>
@@ -138,55 +163,39 @@ const Admin: React.FC = () => {
 
             {activeTab === "skills" && (
                 <div className="space-y-8">
-                    {/* Add New Skill Form */}
+                    {/* Add Skill Form */}
                     <div className="bg-white rounded-lg shadow-lg p-6">
                         <h2 className="text-2xl font-semibold mb-6">Add New Skill</h2>
                         <form onSubmit={handleAddSkill} className="grid md:grid-cols-4 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Skill Name</label>
-                                <input
-                                    type="text"
-                                    value={newSkill.name}
-                                    onChange={(e) => setNewSkill({ ...newSkill, name: e.target.value })}
-                                    required
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    placeholder="e.g., React"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Level</label>
-                                <select
-                                    value={newSkill.level}
-                                    onChange={(e) => setNewSkill({ ...newSkill, level: e.target.value as any })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                >
-                                    <option value="Beginner">Beginner</option>
-                                    <option value="Intermediate">Intermediate</option>
-                                    <option value="Advanced">Advanced</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                                <select
-                                    value={newSkill.category}
-                                    onChange={(e) => setNewSkill({ ...newSkill, category: e.target.value as any })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                >
-                                    <option value="Frontend">Frontend</option>
-                                    <option value="Backend">Backend</option>
-                                    <option value="Database">Database</option>
-                                    <option value="Cloud">Cloud</option>
-                                    <option value="DevOps">DevOps</option>
-                                </select>
-                            </div>
-                            <div className="flex items-end">
-                                <button
-                                    type="submit"
-                                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
-                                >
-                                    Add Skill
-                                </button>
-                            </div>
+                            <input
+                                type="text"
+                                value={newSkill.name}
+                                onChange={(e) => setNewSkill({ ...newSkill, name: e.target.value })}
+                                required
+                                placeholder="Skill Name"
+                                className="border px-3 py-2 rounded-md"
+                            />
+                            <select
+                                value={newSkill.level}
+                                onChange={(e) => setNewSkill({ ...newSkill, level: e.target.value as Skill["level"] })}
+                                className="border px-3 py-2 rounded-md"
+                            >
+                                <option>Beginner</option>
+                                <option>Intermediate</option>
+                                <option>Advanced</option>
+                            </select>
+                            <select
+                                value={newSkill.category}
+                                onChange={(e) => setNewSkill({ ...newSkill, category: e.target.value as Skill["category"] })}
+                                className="border px-3 py-2 rounded-md"
+                            >
+                                <option>Frontend</option>
+                                <option>Backend</option>
+                                <option>Database</option>
+                                <option>Cloud</option>
+                                <option>DevOps</option>
+                            </select>
+                            <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Add</button>
                         </form>
                     </div>
 
@@ -194,37 +203,71 @@ const Admin: React.FC = () => {
                     <div className="bg-white rounded-lg shadow-lg p-6">
                         <h2 className="text-2xl font-semibold mb-6">Manage Skills ({skills.length})</h2>
                         <div className="space-y-4">
-                            {skills.map((skill) => (
-                                <div
-                                    key={skill._id}
-                                    className="flex justify-between items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
-                                >
-                                    <div className="flex-1">
-                                        <h3 className="font-semibold text-lg">{skill.name}</h3>
-                                        <div className="flex items-center space-x-4 text-sm text-gray-600">
-                                            <span>Category: {skill.category}</span>
-                                            <span
-                                                className={`px-2 py-1 rounded-full text-xs ${skill.level === "Advanced"
-                                                    ? "bg-green-100 text-green-800"
-                                                    : skill.level === "Intermediate"
-                                                        ? "bg-yellow-100 text-yellow-800"
-                                                        : "bg-blue-100 text-blue-800"
-                                                    }`}
+                            {skills.map((skill) =>
+                                editingSkillId === skill._id ? (
+                                    <form key={skill._id} onSubmit={handleUpdateSkill} className="flex flex-col md:flex-row gap-4 border p-4 rounded-md bg-yellow-50">
+                                        <input
+                                            type="text"
+                                            value={editSkill.name}
+                                            onChange={(e) => setEditSkill({ ...editSkill, name: e.target.value })}
+                                            className="border px-3 py-1 rounded-md w-full md:w-40"
+                                            required
+                                        />
+                                        <select
+                                            value={editSkill.level || "Beginner"}
+                                            onChange={(e) =>
+                                                setEditSkill({ ...editSkill, level: e.target.value as Skill["level"] })
+                                            }
+                                            className="border px-3 py-1 rounded-md"
+                                        >
+                                            <option>Beginner</option>
+                                            <option>Intermediate</option>
+                                            <option>Advanced</option>
+                                        </select>
+                                        <select
+                                            value={editSkill.category || "Frontend"}
+                                            onChange={(e) =>
+                                                setEditSkill({ ...editSkill, category: e.target.value as Skill["category"] })
+                                            }
+                                            className="border px-3 py-1 rounded-md"
+                                        >
+                                            <option>Frontend</option>
+                                            <option>Backend</option>
+                                            <option>Database</option>
+                                            <option>Cloud</option>
+                                            <option>DevOps</option>
+                                        </select>
+                                        <div className="flex gap-2">
+                                            <button type="submit" className="bg-green-600 text-white px-4 py-1 rounded-md hover:bg-green-700">
+                                                Save
+                                            </button>
+                                            <button type="button" onClick={handleCancelEdit} className="bg-gray-400 text-white px-4 py-1 rounded-md hover:bg-gray-600">
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </form>
+                                ) : (
+                                    <div key={skill._id} className="flex justify-between items-center p-4 border rounded-md hover:bg-gray-50">
+                                        <div>
+                                            <h3 className="font-semibold">{skill.name}</h3>
+                                            <p className="text-sm text-gray-600">{skill.category} — {skill.level}</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleEditClick(skill)}
+                                                className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600"
                                             >
-                                                {skill.level}
-                                            </span>
+                                                Edit
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteSkill(skill._id!)}
+                                                className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                                            >
+                                                Delete
+                                            </button>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => handleDeleteSkill(skill._id!)}
-                                        className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
-                                    >
-                                        Delete
-                                    </button>
-                                </div>
-                            ))}
-                            {skills.length === 0 && (
-                                <div className="text-center py-8 text-gray-500">No skills added yet. Add your first skill above!</div>
+                                )
                             )}
                         </div>
                     </div>
@@ -234,24 +277,17 @@ const Admin: React.FC = () => {
             {activeTab === "contacts" && (
                 <div className="bg-white rounded-lg shadow-lg p-6">
                     <h2 className="text-2xl font-semibold mb-6">Contact Messages ({contacts.length})</h2>
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                         {contacts.map((contact) => (
-                            <div key={contact._id} className="border border-gray-200 rounded-lg p-6 hover:bg-gray-50">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h3 className="font-semibold text-lg">{contact.name}</h3>
-                                        <p className="text-gray-600">{contact.email}</p>
-                                    </div>
-                                    <span className="text-sm text-gray-500">
-                                        {contact.createdAt ? new Date(contact.createdAt).toLocaleDateString() : "Recent"}
-                                    </span>
-                                </div>
-                                <div className="bg-gray-50 rounded-lg p-4">
-                                    <p className="text-gray-700 leading-relaxed">{contact.message}</p>
-                                </div>
+                            <div key={contact._id} className="border p-4 rounded-md">
+                                <h3 className="font-semibold">{contact.name}</h3>
+                                <p className="text-sm text-gray-600">{contact.email}</p>
+                                <p className="mt-2">{contact.message}</p>
+                                <p className="text-xs text-gray-400 mt-2">
+                                    {contact.createdAt ? new Date(contact.createdAt).toLocaleDateString() : "Recent"}
+                                </p>
                             </div>
                         ))}
-                        {contacts.length === 0 && <div className="text-center py-8 text-gray-500">No contact messages yet.</div>}
                     </div>
                 </div>
             )}

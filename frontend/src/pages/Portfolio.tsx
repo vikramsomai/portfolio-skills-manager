@@ -1,5 +1,4 @@
 import type React from "react"
-
 interface Project {
     id: number
     title: string
